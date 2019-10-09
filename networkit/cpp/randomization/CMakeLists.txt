@@ -1,4 +1,5 @@
 networkit_add_module(randomization
+    BipartiteGlobalCurveball.cpp
     Curveball.cpp
     CurveballGlobalTradeGenerator.cpp
     CurveballImpl.cpp
