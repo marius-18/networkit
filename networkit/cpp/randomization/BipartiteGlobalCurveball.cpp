@@ -6,8 +6,6 @@
 
 // darf ich das?
 #include <tlx/algorithm/random_bipartition_shuffle.hpp>
-
-#include <iostream>
 #include <networkit/graph/GraphTools.hpp>
 
 namespace NetworKit {
@@ -91,7 +89,6 @@ void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
     std::mt19937_64 prng(rd());
 
     for (count round = 0; round < numberOfGlobalTrades; ++round) {
-        //#if 0
 
         // Permutationsvektor erstellen:
         std::vector<node> perm;
@@ -101,7 +98,7 @@ void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
 
         std::shuffle(perm.begin(), perm.end(), prng);
 
-        //#pragma omp parallel
+#pragma omp parallel
         {
             // allok
             std::vector<node> common, disjoint;
@@ -114,7 +111,7 @@ void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
             std::vector<node> *u;
             std::vector<node> *v;
 
-            //#pragma omp for
+#pragma omp for
             for (size_t i = 0; i < adjList.size() - 1; i += 2) {
                 common.clear();
                 disjoint.clear();
