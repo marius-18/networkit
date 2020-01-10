@@ -64,6 +64,10 @@ private:
     std::vector<std::vector<node>> adjList;
 
     void buildAdjList();
+
+
+    //hier die hilfsfunktionen rein oder nicht?
+    //void common_disjoint_sortsort();
 };
 
 } // namespace NetworKit
