@@ -1,16 +1,17 @@
 // networkit-format
 #include <cassert>
 
-#include <networkit/graph/GraphBuilder.hpp>
 #include <networkit/randomization/BipartiteGlobalCurveball.hpp>
-
-// darf ich das?
 #include <tlx/algorithm/random_bipartition_shuffle.hpp>
 #include <networkit/graph/GraphTools.hpp>
 
+#include <networkit/auxiliary/Random.hpp>
+#include <iostream>
+
+
 namespace NetworKit {
 
-static void common_disjoint_sortsort(std::vector<node> &neighbourhood_of_u,
+void BipartiteGlobalCurveball::compute_common_disjoint(std::vector<node> &neighbourhood_of_u,
                                      std::vector<node> &neighbourhood_of_v,
                                      std::vector<node> &common_neighbours,
                                      std::vector<node> &disjoint_neighbours) {
@@ -19,7 +20,7 @@ static void common_disjoint_sortsort(std::vector<node> &neighbourhood_of_u,
     assert(disjoint_neighbours.empty());
 
     // sort neighbourhoods to easily identify common neighbours
-    // was machen wir mit dem vorsortieren?!?!
+    // TODO: was machen wir mit dem vorsortieren?!?!
     // if (true){
     std::sort(neighbourhood_of_u.begin(), neighbourhood_of_u.end());
     std::sort(neighbourhood_of_v.begin(), neighbourhood_of_v.end());
@@ -52,13 +53,18 @@ static void common_disjoint_sortsort(std::vector<node> &neighbourhood_of_u,
     }
 }
 
-static void trade(std::vector<node> &common, std::vector<node> &disjoint,
-                  std::vector<node> &neighbourhood_of_u, std::vector<node> &neighbourhood_of_v,
-                  std::mt19937_64 &prng) {
+void BipartiteGlobalCurveball::make_trade(std::vector<node> &common,
+                                            std::vector<node> &disjoint,
+                                            std::vector<node> &neighbourhood_of_u,
+                                            std::vector<node> &neighbourhood_of_v,
+                                            std::mt19937_64 &prng) {
 
-    // ANNAHME: u ist der größere Vektor!
-    // evtl Umbauen, mit Fallunterscheidung?
+    // u has to be the larger vector!
 
+    //if (neighbourhood_of_u.size() < neighbourhood_of_v.size()){
+    //    BipartiteGlobalCurveball::make_trade(common, disjoint, neighbourhood_of_v, neighbourhood_of_u, prng);
+    //    return;
+    //}
     // tausche die Elemente in disjoint, aber nur so dass die erste partition zufällig ist, rest
     // egal
     const size_t partition_size = neighbourhood_of_v.size() - common.size();
@@ -84,56 +90,46 @@ void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
         buildAdjList();
     }
 
-    // wohin hiermit? gibts da probleme mit der parallelität?
-    std::random_device rd;
-    std::mt19937_64 prng(rd());
 
-    for (count round = 0; round < numberOfGlobalTrades; ++round) {
+    #pragma omp parallel
+    {
+        auto& prng = Aux::Random::getURNG();
+        std::vector<node> common, disjoint;
 
-        // Permutationsvektor erstellen:
+        const auto maxDegree = NetworKit::GraphTools::maxDegree(inputGraph);
+        disjoint.reserve(2 * maxDegree);
+        common.reserve(2 * maxDegree);
+
         std::vector<node> perm;
-        for (node i = 0; i < adjList.size(); ++i) {
-            perm.push_back(i);
-        }
+        perm.resize(adjList.size());
+        std::iota(perm.begin(), perm.end(), 0);
 
-        std::shuffle(perm.begin(), perm.end(), prng);
+        for (count round = 0; round < numberOfGlobalTrades; ++round) {
+            #pragma omp single
+            {
+                std::shuffle(perm.begin(), perm.end(), prng);
+            };
 
-#pragma omp parallel
-        {
-            // allok
-            std::vector<node> common, disjoint;
-            // maxDegree() ist deprecated
-            int maxGrad = NetworKit::GraphTools::maxDegree(inputGraph);
-
-            disjoint.reserve(2 * maxGrad);
-            common.reserve(2 * maxGrad);
-
-            std::vector<node> *u;
-            std::vector<node> *v;
-
-#pragma omp for
+        #pragma omp for
             for (size_t i = 0; i < adjList.size() - 1; i += 2) {
                 common.clear();
                 disjoint.clear();
 
-                // ich bin mir nicht sicher ob man das so macht mit den adressen und pointern für
-                // u,v...
-                u = &adjList[perm[i]];
-                v = &adjList[perm[i + 1]];
+                auto& u = adjList[perm[i]];
+                auto& v = adjList[perm[i+1]];
 
-                NetworKit::common_disjoint_sortsort(*u, *v, common, disjoint);
+                BipartiteGlobalCurveball::compute_common_disjoint(u, v, common, disjoint);
 
-                // u.clear();
-                // v.clear();
+                if (u.size() < v.size()){
+                    BipartiteGlobalCurveball::make_trade(common, disjoint, v,u,prng);
 
-                if ((*u).size() >= (*v).size()) {
-                    NetworKit::trade(common, disjoint, *u, *v, prng);
-                } else {
-                    NetworKit::trade(common, disjoint, *v, *u, prng);
+                } else{
+                    BipartiteGlobalCurveball::make_trade(common, disjoint, u,v,prng);
+
                 }
             }
         }
-    }
+    };
 
     hasRun = true;
 }
@@ -165,9 +161,11 @@ Graph BipartiteGlobalCurveball::getGraph() {
     }
 
     node i = 0;
-    for (auto &vs : adjList) {
+    for (const auto &vs : adjList) {
         const auto u = bipartitionClass[i++];
         for (auto v : vs) {
+
+            std::cout << "jo: (" << u << ", " << v << ")" << std::endl;
             graph.addEdge(u, v);
         }
     }

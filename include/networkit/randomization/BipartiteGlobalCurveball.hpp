@@ -57,17 +57,25 @@ public:
     bool isParallel() const override { return false; }
 
 private:
-    Graph inputGraph;
-    std::vector<node> bipartitionClass;
+    const Graph& inputGraph;
+    const std::vector<node>& bipartitionClass;
     unsigned numGlobalTrades;
 
     std::vector<std::vector<node>> adjList;
 
     void buildAdjList();
 
+    //TODO: static oder nicht static?
+    void compute_common_disjoint(std::vector<node> &neighbourhood_of_u,
+                                 std::vector<node> &neighbourhood_of_v,
+                                 std::vector<node> &common_neighbours,
+                                 std::vector<node> &disjoint_neighbours);
 
-    //hier die hilfsfunktionen rein oder nicht?
-    //void common_disjoint_sortsort();
+    void make_trade(std::vector<node> &common,
+                    std::vector<node> &disjoint,
+                    std::vector<node> &neighbourhood_of_u,
+                    std::vector<node> &neighbourhood_of_v,
+                    std::mt19937_64 &prng);
 };
 
 } // namespace NetworKit
