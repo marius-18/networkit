@@ -1,24 +1,22 @@
 // networkit-format
 #include <cassert>
 
-#include <networkit/randomization/BipartiteGlobalCurveball.hpp>
 #include <tlx/algorithm/random_bipartition_shuffle.hpp>
 #include <networkit/graph/GraphTools.hpp>
+#include <networkit/randomization/BipartiteGlobalCurveball.hpp>
 
+#include <numeric>
 #include <networkit/auxiliary/Random.hpp>
-#include <iostream>
-
 
 namespace NetworKit {
 
 void BipartiteGlobalCurveball::compute_common_disjoint(std::vector<node> &neighbourhood_of_u,
-                                     std::vector<node> &neighbourhood_of_v,
-                                     std::vector<node> &common_neighbours,
-                                     std::vector<node> &disjoint_neighbours) {
+                                                       std::vector<node> &neighbourhood_of_v,
+                                                       std::vector<node> &common_neighbours,
+                                                       std::vector<node> &disjoint_neighbours) {
 
     assert(common_neighbours.empty());
     assert(disjoint_neighbours.empty());
-
 
     // sort neighbourhoods to easily identify common neighbours
     // TODO: was machen wir mit dem vorsortieren?!?!
@@ -54,16 +52,16 @@ void BipartiteGlobalCurveball::compute_common_disjoint(std::vector<node> &neighb
     }
 }
 
-void BipartiteGlobalCurveball::make_trade(std::vector<node> &common,
-                                            std::vector<node> &disjoint,
-                                            std::vector<node> &neighbourhood_of_u,
-                                            std::vector<node> &neighbourhood_of_v,
-                                            std::mt19937_64 &prng) {
+void BipartiteGlobalCurveball::make_trade(std::vector<node> &common, std::vector<node> &disjoint,
+                                          std::vector<node> &neighbourhood_of_u,
+                                          std::vector<node> &neighbourhood_of_v,
+                                          std::mt19937_64 &prng) {
 
     // u has to be the larger vector!
 
-    if (neighbourhood_of_u.size() < neighbourhood_of_v.size()){
-        BipartiteGlobalCurveball::make_trade(common, disjoint, neighbourhood_of_v, neighbourhood_of_u, prng);
+    if (neighbourhood_of_u.size() < neighbourhood_of_v.size()) {
+        BipartiteGlobalCurveball::make_trade(common, disjoint, neighbourhood_of_v,
+                                             neighbourhood_of_u, prng);
         return;
     }
     // tausche die Elemente in disjoint, aber nur so dass die erste partition zufällig ist, rest
@@ -84,57 +82,49 @@ void BipartiteGlobalCurveball::make_trade(std::vector<node> &common,
               neighbourhood_of_u.begin() + common.size());
 }
 
+void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
+    if (!hasRun) {
+        // we may allow multiple calls to run(). In this case, we continue where we left,
+        // which is useful if we want to take snapshots of the randomisation process;
+        buildAdjList();
+    }
 
-
-
-
-    void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
-        if (!hasRun) {
-            // we may allow multiple calls to run(). In this case, we continue where we left,
-            // which is useful if we want to take snapshots of the randomisation process;
-            buildAdjList();
-        }
-
-
-        std::vector<node> perm;
-        perm.resize(adjList.size());
-        std::iota(perm.begin(), perm.end(), 0);
+    std::vector<node> perm;
+    perm.resize(adjList.size());
+    std::iota(perm.begin(), perm.end(), 0);
 
 #pragma omp parallel
-        {
-            auto& prng = Aux::Random::getURNG();
-            for (count round = 0; round < numberOfGlobalTrades; ++round) {
+    {
+        auto &prng = Aux::Random::getURNG();
+        for (count round = 0; round < numberOfGlobalTrades; ++round) {
 
-                #pragma omp single
-                {
-                    std::shuffle(perm.begin(), perm.end(), prng);
-                };
+#pragma omp single
+            { std::shuffle(perm.begin(), perm.end(), prng); };
 
-                std::vector<node> common, disjoint;
-                const auto maxDegree = NetworKit::GraphTools::maxDegree(inputGraph);
+            std::vector<node> common, disjoint;
+            const auto maxDegree = NetworKit::GraphTools::maxDegree(inputGraph);
 
-                disjoint.reserve(2 * maxDegree);
-                common.reserve(2 * maxDegree);
+            disjoint.reserve(2 * maxDegree);
+            common.reserve(2 * maxDegree);
 
-                const auto n = static_cast<omp_index>(adjList.size() - 1);
+            const auto n = static_cast<omp_index>(adjList.size() - 1);
 
-                #pragma omp for schedule(dynamic, 128)
-                for (omp_index i = 0; i < n; i += 2) {
-                    common.clear();
-                    disjoint.clear();
+#pragma omp for schedule(dynamic, 128)
+            for (omp_index i = 0; i < n; i += 2) {
+                common.clear();
+                disjoint.clear();
 
-                    auto& u = adjList[perm[i]];
-                    auto& v = adjList[perm[i + 1]];
+                auto &u = adjList[perm[i]];
+                auto &v = adjList[perm[i + 1]];
 
-                    BipartiteGlobalCurveball::compute_common_disjoint(u, v, common, disjoint);
-                    BipartiteGlobalCurveball::make_trade(common, disjoint, u, v, prng);
-
-                }
+                BipartiteGlobalCurveball::compute_common_disjoint(u, v, common, disjoint);
+                BipartiteGlobalCurveball::make_trade(common, disjoint, u, v, prng);
             }
         }
-
-        hasRun = true;
     }
+
+    hasRun = true;
+}
 
 void BipartiteGlobalCurveball::buildAdjList() {
     assert(bipartitionClass.size() < inputGraph.numberOfNodes());
@@ -166,8 +156,6 @@ Graph BipartiteGlobalCurveball::getGraph() {
     for (const auto &vs : adjList) {
         const auto u = bipartitionClass[i++];
         for (auto v : vs) {
-
-            //std::cout << "jo: (" << u << ", " << v << ")" << std::endl;
             graph.addEdge(u, v);
         }
     }

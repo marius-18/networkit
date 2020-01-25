@@ -7,21 +7,21 @@ namespace NetworKit {
 
 class CurveballUniformTradeGeneratorGTest : public ::testing::Test {};
 
-static Graph create_random_bipartite_Graph(count n, count part_size, std::vector<node> &partition, int type) {
+static Graph create_random_bipartite_Graph(count n, count part_size, std::vector<node> &partition,
+                                           int type) {
     Graph graph(n, false, false);
 
     assert(part_size < n);
 
     std::vector<node> second_part;
-    second_part.resize(n-part_size); // TODO: DAS MUSS EIN RESIZE SEIN... warum?
+    second_part.resize(n - part_size); // TODO: DAS MUSS EIN RESIZE SEIN... warum?
     std::iota(second_part.begin(), second_part.end(), part_size);
-
 
     if (type == 1) {
         // computes a bipartite Graph with random edges between the partitions
 
         std::mt19937_64 prng(1);
-        std::uniform_int_distribution<node> dis(0,second_part.size()-1);
+        std::uniform_int_distribution<node> dis(0, second_part.size() - 1);
 
         for (node u = 0; u < part_size; ++u) {
             partition.push_back(u);
@@ -61,7 +61,7 @@ static Graph create_random_bipartite_Graph(count n, count part_size, std::vector
 TEST_F(CurveballUniformTradeGeneratorGTest, testBipartition) {
 
     std::vector<node> partition;
-    Graph graphIn = create_random_bipartite_Graph(1000, 500, partition, 1);
+    Graph graphIn = create_random_bipartite_Graph(10000, 5000, partition, 1);
 
     BipartiteGlobalCurveball algo(graphIn, partition);
 
@@ -86,28 +86,26 @@ TEST_F(CurveballUniformTradeGeneratorGTest, testBipartition) {
     for (node u : partition) {
         ASSERT_EQ(graphIn.degree(u), graphOut.degree(u));
     }
-
 }
 
+TEST_F(CurveballUniformTradeGeneratorGTest, testNoop) {
+    // tests the correctness of the conversion to the adjacency-list
+    std::vector<node> partition;
+    Graph graphIn = create_random_bipartite_Graph(100, 50, partition, 3);
 
-    TEST_F(CurveballUniformTradeGeneratorGTest, testNoop) {
-        // tests the correctness of the conversion to the adjacency-list
-        std::vector<node> partition;
-        Graph graphIn = create_random_bipartite_Graph(10, 5, partition, 3);
+    BipartiteGlobalCurveball algo(graphIn, partition);
+    algo.run(0); // do not carry out any trades
 
-        BipartiteGlobalCurveball algo(graphIn, partition);
-        algo.run(0); // do not carry out any trades
+    const auto graphOut = algo.getGraph();
 
-        const auto graphOut = algo.getGraph();
+    ASSERT_EQ(graphIn.numberOfNodes(), graphOut.numberOfNodes());
+    ASSERT_EQ(graphIn.numberOfEdges(), graphOut.numberOfEdges());
 
-        ASSERT_EQ(graphIn.numberOfNodes(), graphOut.numberOfNodes());
-        ASSERT_EQ(graphIn.numberOfEdges(), graphOut.numberOfEdges());
-
-        for (node u : partition) {
-            ASSERT_EQ(graphIn.degree(u), graphOut.degree(u));
-        }
-
-        graphIn.forEdges([&](node u, node v) { ASSERT_TRUE(graphOut.hasEdge(u, v)); });
+    for (node u : partition) {
+        ASSERT_EQ(graphIn.degree(u), graphOut.degree(u));
     }
+
+    graphIn.forEdges([&](node u, node v) { ASSERT_TRUE(graphOut.hasEdge(u, v)); });
+}
 
 } // namespace NetworKit
