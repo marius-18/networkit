@@ -30,8 +30,6 @@ static Graph create_random_bipartite_Graph(count n, count part_size, std::vector
             node count = dis(prng);
 
             for (node i = 0; i < count; ++i) {
-                std::cout << u << ", " << second_part[i] << " - " << n << " .. "<< i << std::endl;
-                std::cout << "ihh" << second_part[31] << std::endl;
                 graph.addEdge(u, second_part[i]);
             }
         }
@@ -63,11 +61,11 @@ static Graph create_random_bipartite_Graph(count n, count part_size, std::vector
 TEST_F(CurveballUniformTradeGeneratorGTest, testBipartition) {
 
     std::vector<node> partition;
-    Graph graphIn = create_random_bipartite_Graph(100, 50, partition, 1);
+    Graph graphIn = create_random_bipartite_Graph(1000, 500, partition, 1);
 
     BipartiteGlobalCurveball algo(graphIn, partition);
 
-    algo.run(10);
+    algo.run(20);
 
     const auto graphOut = algo.getGraph();
 

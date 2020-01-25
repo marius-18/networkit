@@ -66,12 +66,12 @@ private:
     void buildAdjList();
 
     //TODO: static oder nicht static?
-    void compute_common_disjoint(std::vector<node> &neighbourhood_of_u,
+    static void compute_common_disjoint(std::vector<node> &neighbourhood_of_u,
                                  std::vector<node> &neighbourhood_of_v,
                                  std::vector<node> &common_neighbours,
                                  std::vector<node> &disjoint_neighbours);
 
-    void make_trade(std::vector<node> &common,
+    static void make_trade(std::vector<node> &common,
                     std::vector<node> &disjoint,
                     std::vector<node> &neighbourhood_of_u,
                     std::vector<node> &neighbourhood_of_v,
