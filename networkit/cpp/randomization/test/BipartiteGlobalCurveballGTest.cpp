@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <networkit/randomization/BipartiteGlobalCurveball.hpp>
+#include <numeric>
 
 namespace NetworKit {
 
