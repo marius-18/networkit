@@ -1,8 +1,8 @@
 // networkit-format
 
+#include <numeric>
 #include <gtest/gtest.h>
 #include <networkit/randomization/BipartiteGlobalCurveball.hpp>
-#include <numeric>
 
 namespace NetworKit {
 
@@ -62,7 +62,7 @@ static Graph create_random_bipartite_Graph(count n, count part_size, std::vector
 TEST_F(CurveballUniformTradeGeneratorGTest, testBipartition) {
 
     std::vector<node> partition;
-    Graph graphIn = create_random_bipartite_Graph(10000, 5000, partition, 1);
+    Graph graphIn = create_random_bipartite_Graph(100, 50, partition, 1);
 
     BipartiteGlobalCurveball algo(graphIn, partition);
 
