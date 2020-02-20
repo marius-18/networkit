@@ -13,18 +13,25 @@ static Graph create_random_bipartite_Graph(count n, count part_size, std::vector
     Graph graph(n, false, false);
 
     assert(part_size < n);
+    std::mt19937_64 prng(1);
 
-    std::vector<node> second_part;
-    second_part.resize(n - part_size); // TODO: DAS MUSS EIN RESIZE SEIN... warum?
-    std::iota(second_part.begin(), second_part.end(), part_size);
+    std::vector<node> full, first_part, second_part;
+    first_part.resize(part_size);
+    second_part.resize(n - part_size);
+    full.resize(n);
+
+    std::iota(full.begin(), full.end(), 0);
+    std::shuffle(full.begin(), full.end(), prng);
+
+    std::copy_n(full.begin(), part_size, first_part.begin());
+    std::copy(full.begin() + part_size, full.end(), second_part.begin());
 
     if (type == 1) {
         // computes a bipartite Graph with random edges between the partitions
 
-        std::mt19937_64 prng(1);
         std::uniform_int_distribution<node> dis(0, second_part.size() - 1);
 
-        for (node u = 0; u < part_size; ++u) {
+        for (auto u : first_part) {
             partition.push_back(u);
             std::shuffle(second_part.begin(), second_part.end(), prng);
 

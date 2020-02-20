@@ -73,6 +73,8 @@ private:
 
     static void make_trade(std::vector<node> &common,
                     std::vector<node> &disjoint,
+                    std::vector<node>& disjoint_u,
+                    std::vector<node>& disjoint_v,
                     std::vector<node> &neighbourhood_of_u,
                     std::vector<node> &neighbourhood_of_v,
                     std::mt19937_64 &prng);

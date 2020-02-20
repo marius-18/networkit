@@ -18,13 +18,6 @@ void BipartiteGlobalCurveball::compute_common_disjoint(std::vector<node> &neighb
     assert(common_neighbours.empty());
     assert(disjoint_neighbours.empty());
 
-    // sort neighbourhoods to easily identify common neighbours
-    // TODO: was machen wir mit dem vorsortieren?!?!
-    // if (true){
-    std::sort(neighbourhood_of_u.begin(), neighbourhood_of_u.end());
-    std::sort(neighbourhood_of_v.begin(), neighbourhood_of_v.end());
-    //}
-
     auto u_nit = neighbourhood_of_u.cbegin();
     auto v_nit = neighbourhood_of_v.cbegin();
 
@@ -53,33 +46,44 @@ void BipartiteGlobalCurveball::compute_common_disjoint(std::vector<node> &neighb
 }
 
 void BipartiteGlobalCurveball::make_trade(std::vector<node> &common, std::vector<node> &disjoint,
+                                          std::vector<node> &disjoint_u,
+                                          std::vector<node> &disjoint_v,
                                           std::vector<node> &neighbourhood_of_u,
                                           std::vector<node> &neighbourhood_of_v,
                                           std::mt19937_64 &prng) {
 
-    // u has to be the larger vector!
+    size_t nu = neighbourhood_of_u.size() - common.size();
+    size_t nv = neighbourhood_of_v.size() - common.size();
 
-    if (neighbourhood_of_u.size() < neighbourhood_of_v.size()) {
-        BipartiteGlobalCurveball::make_trade(common, disjoint, neighbourhood_of_v,
-                                             neighbourhood_of_u, prng);
-        return;
+    disjoint_u.resize(nu);
+    disjoint_v.resize(nv);
+
+    assert(nu + nv == disjoint.size());
+
+    std::array<node *, 2> results = {};
+
+    results = {disjoint_u.data(), disjoint_v.data()};
+
+    auto it = disjoint.cbegin();
+    while (nu && nv) {
+        const auto fromA = std::uniform_int_distribution<size_t>(0, nu + nv - 1)(prng) < nu;
+        auto &ptr = results[!fromA];
+        *(ptr++) = *it;
+
+        nu -= fromA;
+        nv -= !fromA;
+
+        it++;
     }
-    // tausche die Elemente in disjoint, aber nur so dass die erste partition zufällig ist, rest
-    // egal
-    const size_t partition_size = neighbourhood_of_v.size() - common.size();
-    tlx::random_bipartition_shuffle(disjoint.begin(), disjoint.end(), partition_size, prng);
 
-    // kopiere die gleichen elemente in u und v
-    std::copy(common.begin(), common.end(), neighbourhood_of_u.begin());
-    std::copy(common.begin(), common.end(), neighbourhood_of_v.begin());
+    auto larger = results[nu == 0]; // hier ist noch ''platz'' im Vektor
 
-    // u := large, v := small
-    // Beginn nach common.size()
-    // in v die ersten Elemente, der Rest in u
-    std::copy(disjoint.begin(), disjoint.begin() + partition_size,
-              neighbourhood_of_v.begin() + common.size());
-    std::copy(disjoint.begin() + partition_size, disjoint.end(),
-              neighbourhood_of_u.begin() + common.size());
+    std::copy(it, disjoint.cend(), larger);
+
+    std::merge(disjoint_u.begin(), disjoint_u.end(), common.begin(), common.end(),
+               neighbourhood_of_u.begin());
+    std::merge(disjoint_v.begin(), disjoint_v.end(), common.begin(), common.end(),
+               neighbourhood_of_v.begin());
 }
 
 void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
@@ -96,29 +100,42 @@ void BipartiteGlobalCurveball::run(count numberOfGlobalTrades) {
 #pragma omp parallel
     {
         auto &prng = Aux::Random::getURNG();
+
+#pragma omp for schedule(dynamic, 128)
+        for (omp_index i = 0; i < adjList.size(); i++) {
+            std::sort(adjList[i].begin(), adjList[i].end());
+        }
+
         for (count round = 0; round < numberOfGlobalTrades; ++round) {
 
 #pragma omp single
             { std::shuffle(perm.begin(), perm.end(), prng); };
 
-            std::vector<node> common, disjoint;
+            std::vector<node> common, disjoint, disjoint_u, disjoint_v;
             const auto maxDegree = NetworKit::GraphTools::maxDegree(inputGraph);
 
             disjoint.reserve(2 * maxDegree);
             common.reserve(2 * maxDegree);
 
+            disjoint_u.reserve(maxDegree);
+            disjoint_v.reserve(maxDegree);
+
             const auto n = static_cast<omp_index>(adjList.size() - 1);
 
 #pragma omp for schedule(dynamic, 128)
             for (omp_index i = 0; i < n; i += 2) {
+
                 common.clear();
                 disjoint.clear();
+                disjoint_u.clear();
+                disjoint_v.clear();
 
                 auto &u = adjList[perm[i]];
                 auto &v = adjList[perm[i + 1]];
 
                 BipartiteGlobalCurveball::compute_common_disjoint(u, v, common, disjoint);
-                BipartiteGlobalCurveball::make_trade(common, disjoint, u, v, prng);
+                BipartiteGlobalCurveball::make_trade(common, disjoint, disjoint_u, disjoint_v, u, v,
+                                                     prng);
             }
         }
     }
