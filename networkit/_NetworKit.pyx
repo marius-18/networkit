@@ -12370,6 +12370,69 @@ cdef class GlobalCurveball(Algorithm):
 		return Graph().setThis((<_GlobalCurveball*>self._this).getGraph())
 
 
+cdef extern from "<networkit/randomization/BipartiteGlobalCurveball.hpp>":
+	cdef cppclass _BipartiteGlobalCurveball "NetworKit::BipartiteGlobalCurveball"(_Algorithm):
+		_BipartiteGlobalCurveball(_Graph, vector[node]&, count) except +
+		_Graph getGraph() except +
+
+cdef class BipartiteGlobalCurveball(Algorithm):
+	"""
+	Implementation of GlobalCurveball proposed in "Parallel and I/O-efficient
+	Randomisation of Massive Networks using Global Curveball Trades",
+	Carstens et al., ESA 2018. for bipartite graphs.
+
+	The algorithm perturbs an unweighted input bipartite graph, by iteratively
+	randomizing the neighbourhoods of node pairs. For a large number
+	of global trades this process is shown to produce an uniform sample
+	from the set of all graphs with the same degree sequence as the input
+	graph.
+
+	Since a single trades within a global trade do not dependent on each other
+	in a bipartite graph, this implementation is much faster than the one provided
+	by GlobalCurveball. It also efficiently distributes the work load to all
+	availble threads.
+
+	Parameters
+	----------
+
+	G : networkit.Graph
+		The graph to be randomized. For a given degree sequence, e.g.
+		generators.HavelHakimi can be used to obtain this graph.
+
+	bipartion_class:
+		A list of all nodes belonging into the "active" partition class,
+		i.e. each single trade targets two nodes u, v in bipartion_class
+		and shuffles their neighborhoods.
+
+		NOTE: If the cardinality of both classes is inbalanced, it's
+		typically best to provide the smaller class.
+
+		WARNING: Providing an invalid class results in undefined behaivor.
+
+	number_of_global_rounds:
+		Number of global rounds to carry out. The runtime scales
+		asymptotically linearly in this parameter. Default: 20,
+		which yields good results experimentally (see Paper).
+	"""
+	cdef vector[node] _bipartition_class
+
+	def __cinit__(self, G, vector[node] bipartition_class, number_of_global_rounds = 20):
+		if isinstance(G, Graph):
+			self._bipartition_class = bipartition_class
+			self._this = new _BipartiteGlobalCurveball((<Graph>G)._this, self._bipartition_class, number_of_global_rounds)
+		else:
+			raise RuntimeError("Parameter G has to be a graph")
+
+	"""
+
+	Get randomized graph after invocation of run().
+
+	"""
+
+	def getGraph(self):
+		return Graph().setThis((<_BipartiteGlobalCurveball*>self._this).getGraph())
+
+
 cdef extern from "<networkit/randomization/CurveballUniformTradeGenerator.hpp>":
 
 	cdef cppclass _CurveballUniformTradeGenerator "NetworKit::CurveballUniformTradeGenerator":

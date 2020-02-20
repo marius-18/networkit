@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import unittest
 import networkit as nk
+import random
 
 def check_graphs(G1, G2):
     assert(G1.numberOfNodes() == G2.numberOfNodes())
@@ -86,9 +87,29 @@ class TestRandomization(unittest.TestCase):
             G2 = dps.getGraph()
             check_graphs(G, G2)
             perm = dps.getPermutation()
-            for u in G.nodes():
+            for u in range(G.numberOfNodes()):
                 self.assertEqual(G.degree(u), G.degree(perm[u]))
                 self.assertEqual(G.degreeIn(u), G.degreeIn(perm[u]))
+
+    def test_bipartite_global_curveball(self):
+        G = nk.Graph(100)
+        nodes = list(range(0, G.numberOfNodes()))
+        clsA = random.sample(nodes, len(nodes) // 3)
+        clsB = list(set(nodes).difference(clsA))
+
+        while G.numberOfEdges() < G.numberOfNodes() * 10:
+            u = random.choice(clsA)
+            v = random.choice(clsB)
+            if not G.hasEdge(u, v):
+                G.addEdge(u, v)
+
+        for cls in [clsA, clsB]:
+            alg = nk.randomization.BipartiteGlobalCurveball(G, cls, 20)
+            alg.run()
+            G1 = alg.getGraph()
+
+            for u in nodes:
+                self.assertEqual(G.degree(u), G1.degree(u))
 
     def test_degree_preserving_shuffle_directed_triangle(self):
         """Test whether a directed triangle is reoriented in 50% of cases"""

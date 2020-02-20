@@ -1,5 +1,5 @@
 """ Randomize Graphs """
 
-__author__ = "Hung Tran, Manuel Penschuck"
+__author__ = "Marius Hagemann, Hung Tran, Manuel Penschuck"
 
-from _NetworKit import GlobalCurveball, Curveball, CurveballGlobalTradeGenerator, CurveballUniformTradeGenerator, DegreePreservingShuffle
+from _NetworKit import BipartiteGlobalCurveball, GlobalCurveball, Curveball, CurveballGlobalTradeGenerator, CurveballUniformTradeGenerator, DegreePreservingShuffle
