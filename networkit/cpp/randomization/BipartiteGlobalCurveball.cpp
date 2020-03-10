@@ -5,6 +5,7 @@
 #include <networkit/graph/GraphTools.hpp>
 #include <networkit/randomization/BipartiteGlobalCurveball.hpp>
 
+#include <array>
 #include <numeric>
 #include <networkit/auxiliary/Random.hpp>
 
@@ -60,7 +61,7 @@ void BipartiteGlobalCurveball::make_trade(std::vector<node> &common, std::vector
 
     assert(nu + nv == disjoint.size());
 
-    std::array<node *, 2> results { {disjoint_u.data(), disjoint_v.data()}};
+    std::array<node *, 2> results{{disjoint_u.data(), disjoint_v.data()}};
 
     auto it = disjoint.cbegin();
     while (nu && nv) {
